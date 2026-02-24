@@ -7,14 +7,21 @@ import { Separator } from '@/components/ui/separator';
 import { FormatTabs } from './format-tabs';
 import { SkillSuggestions } from './skill-suggestions';
 import { ParameterTips } from './parameter-tips';
+import { GenerationSkeleton } from './generation-skeleton';
 
 export function OutputPanel() {
   const result = useForgeStore((s) => s.result);
+  const isGenerating = useForgeStore((s) => s.isGenerating);
 
   return (
-    <AnimatePresence>
-      {result && (
+    <AnimatePresence mode="wait">
+      {isGenerating && (
+        <GenerationSkeleton key="skeleton" />
+      )}
+
+      {!isGenerating && result && (
         <motion.div
+          key="result"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}

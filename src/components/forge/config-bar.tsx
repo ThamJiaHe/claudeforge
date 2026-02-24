@@ -1,5 +1,6 @@
 'use client';
 
+import { motion } from 'framer-motion';
 import { ModelSelector } from './model-selector';
 import { FormatSelector } from './format-selector';
 import { ThinkingToggle } from './thinking-toggle';
@@ -9,7 +10,12 @@ import { Label } from '@/components/ui/label';
 
 export function ConfigBar() {
   return (
-    <div className="flex flex-wrap items-end gap-4 rounded-lg bg-muted/50 p-4">
+    <motion.div
+      className="flex flex-wrap items-end gap-4 rounded-lg bg-muted/50 p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+    >
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">Model</Label>
         <ModelSelector />
@@ -34,6 +40,6 @@ export function ConfigBar() {
         <Label className="text-xs text-muted-foreground">Max Tokens</Label>
         <MaxTokensInput />
       </div>
-    </div>
+    </motion.div>
   );
 }
