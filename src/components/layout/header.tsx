@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { APP_NAME } from '@/lib/constants';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { AuthButton } from '@/components/auth/auth-button';
 
 export function Header() {
   return (
@@ -32,8 +33,7 @@ export function Header() {
 
           <ThemeToggle />
 
-          {/* Placeholder for AuthButton — will be added later */}
-          <div data-slot="auth-button-placeholder" />
+          <AuthButton />
         </div>
       </div>
     </header>

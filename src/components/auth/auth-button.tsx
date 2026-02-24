@@ -1,0 +1,103 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { Loader2, LogOut, Settings } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { useUser } from '@/hooks/use-user';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+function getInitials(name?: string | null, email?: string | null): string {
+  if (name) {
+    return name
+      .split(' ')
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  }
+  if (email) {
+    return email[0].toUpperCase();
+  }
+  return '?';
+}
+
+export function AuthButton() {
+  const { user, loading } = useUser();
+  const router = useRouter();
+
+  const handleSignIn = async () => {
+    const supabase = createClient();
+    await supabase.auth.signInWithOAuth({
+      provider: 'github',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+  };
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.refresh();
+  };
+
+  if (loading) {
+    return (
+      <Button variant="ghost" size="icon" disabled>
+        <Loader2 className="size-4 animate-spin" />
+      </Button>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Button variant="outline" size="sm" onClick={handleSignIn}>
+        Sign In
+      </Button>
+    );
+  }
+
+  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const fullName = user.user_metadata?.full_name as string | undefined;
+  const email = user.email;
+  const initials = getInitials(fullName, email);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-full">
+          <Avatar size="sm">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName ?? 'User avatar'} />}
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <span className="block truncate text-sm text-muted-foreground">
+            {email}
+          </span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push('/settings')}>
+          <Settings />
+          Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
+          <LogOut />
+          Sign Out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
