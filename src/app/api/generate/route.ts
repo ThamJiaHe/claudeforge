@@ -1,10 +1,31 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { buildMetaPrompt } from '@/lib/engine/meta-prompt-builder';
-import { MODELS } from '@/lib/constants';
+import { MODELS, FORMATS } from '@/lib/constants';
 import type { GenerationParams } from '@/lib/types';
 
 export const runtime = 'edge';
+
+// ── Allowed values for strict validation ───────────────────────
+const VALID_MODEL_IDS = new Set(MODELS.map((m) => m.id));
+const VALID_FORMAT_IDS = new Set(FORMATS.map((f) => f.id));
+const VALID_EFFORTS = new Set(['low', 'medium', 'high', 'max']);
+const MAX_TEXT_LENGTH = 50_000;
+const MAX_OUTPUT_TOKENS = 128_000;
+
+/** Sanitise Anthropic SDK errors so no API keys or internals leak to client */
+function sanitizeError(error: unknown): string {
+  const msg = String(error);
+  if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key'))
+    return 'Invalid API key. Please check your Anthropic API key.';
+  if (msg.includes('rate_limit') || msg.includes('429'))
+    return 'Rate limit exceeded. Please wait and try again.';
+  if (msg.includes('overloaded') || msg.includes('529'))
+    return 'Anthropic API is temporarily overloaded. Please retry.';
+  if (msg.includes('Could not resolve the model'))
+    return 'Invalid model selected. Please choose a supported Claude model.';
+  return 'An unexpected error occurred during generation.';
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,25 +36,50 @@ export async function POST(request: NextRequest) {
     };
 
     // ── Input validation ──────────────────────────────────────
-    if (!apiKey || !text) {
+    if (!apiKey || typeof apiKey !== 'string') {
       return new Response(
-        JSON.stringify({ error: 'API key and prompt text are required' }),
+        JSON.stringify({ error: 'A valid API key is required' }),
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+    if (!text || typeof text !== 'string' || text.length > MAX_TEXT_LENGTH) {
+      return new Response(
+        JSON.stringify({ error: `Prompt text is required and must be under ${MAX_TEXT_LENGTH.toLocaleString()} characters` }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!params || !VALID_MODEL_IDS.has(params.model)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid model selected' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!VALID_FORMAT_IDS.has(params.format)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid output format selected' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!VALID_EFFORTS.has(params.effort)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid effort level' }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+    const maxTokens = Math.min(Math.max(1, Math.floor(params.maxTokens)), MAX_OUTPUT_TOKENS);
 
     // ── Build meta-prompt and resolve model string ─────────────
     const client = new Anthropic({ apiKey });
     const { system, userPrefix } = buildMetaPrompt(params);
 
-    // Look up the actual API model string from constants
-    const modelInfo = MODELS.find((m) => m.id === params.model);
-    const modelString = modelInfo?.apiString ?? params.model;
+    // Look up the actual API model string from constants (validated above)
+    const modelInfo = MODELS.find((m) => m.id === params.model)!;
+    const modelString = modelInfo.apiString;
 
     // ── Start streaming from the Anthropic API ────────────────
     const stream = await client.messages.stream({
       model: modelString,
-      max_tokens: params.maxTokens,
+      max_tokens: maxTokens,
       system,
       messages: [
         {
@@ -69,7 +115,7 @@ export async function POST(request: NextRequest) {
           controller.close();
         } catch (streamError) {
           const errorChunk = JSON.stringify({
-            error: String(streamError),
+            error: sanitizeError(streamError),
           });
           controller.enqueue(encoder.encode(`data: ${errorChunk}\n\n`));
           controller.close();
@@ -81,12 +127,12 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
-        Connection: 'keep-alive',
+        'X-Accel-Buffering': 'no',
       },
     });
   } catch (error) {
     return new Response(
-      JSON.stringify({ error: `Generation failed: ${String(error)}` }),
+      JSON.stringify({ error: sanitizeError(error) }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }

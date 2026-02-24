@@ -17,12 +17,12 @@ export function FormatSelector() {
 
   return (
     <Select value={format} onValueChange={(v) => setFormat(v as PromptFormat)}>
-      <SelectTrigger className="w-[180px]">
+      <SelectTrigger className="w-auto min-w-[140px] max-w-[220px]">
         <SelectValue placeholder="Select format" />
       </SelectTrigger>
       <SelectContent>
         {FORMATS.map((f) => (
-          <SelectItem key={f.id} value={f.id}>
+          <SelectItem key={f.id} value={f.id} textValue={f.displayName}>
             <div className="flex flex-col gap-0.5">
               <span className="font-medium">{f.displayName}</span>
               <span className="text-xs text-muted-foreground">

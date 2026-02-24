@@ -34,7 +34,7 @@ export function ApiKeyInput() {
   }
 
   return (
-    <div className="space-y-1.5">
+    <form onSubmit={(e) => e.preventDefault()} className="space-y-1.5">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
           <Input
@@ -45,6 +45,7 @@ export function ApiKeyInput() {
             onBlur={() => {
               if (apiKey) setIsEditing(false);
             }}
+            autoComplete="off"
             className="pr-10 font-mono text-sm"
           />
           <Button
@@ -64,6 +65,7 @@ export function ApiKeyInput() {
         </div>
         {apiKey && (
           <Button
+            type="button"
             variant="ghost"
             size="xs"
             onClick={() => setIsEditing(false)}
@@ -77,6 +79,6 @@ export function ApiKeyInput() {
         Your API key is stored locally in your browser. Never sent to our
         servers.
       </p>
-    </div>
+    </form>
   );
 }

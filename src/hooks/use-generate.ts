@@ -60,18 +60,50 @@ export function useGenerate() {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            let data: Record<string, unknown>;
             try {
-              const data = JSON.parse(line.slice(6));
-              if (data.error) throw new Error(data.error);
-              if (data.text) accumulated += data.text;
-              if (data.done) {
-                // Parse the accumulated text as a generation result
-                // The API returns the full prompt text
+              data = JSON.parse(line.slice(6));
+            } catch {
+              continue; // Skip unparseable SSE lines
+            }
+            if (data.error) throw new Error(String(data.error));
+            if (data.text) accumulated += String(data.text);
+            if (data.done) {
+                // The meta-prompt instructs Claude to return JSON with
+                // { prompt, structuredData, suggestedSkills, parameterTips }
+                let parsedPrompt = accumulated;
+                let structuredData: Record<string, string> = {};
+                let suggestedSkills: GenerationResult['suggestedSkills'] = [];
+                let parameterTips: string[] = [];
+
+                try {
+                  // Strip markdown code fences if Claude wrapped them
+                  const cleaned = accumulated
+                    .trim()
+                    .replace(/^```(?:json)?\s*\n?/i, '')
+                    .replace(/\n?```\s*$/i, '')
+                    .trim();
+                  const parsed = JSON.parse(cleaned);
+                  if (parsed && typeof parsed.prompt === 'string') {
+                    parsedPrompt = parsed.prompt;
+                    structuredData = parsed.structuredData ?? {};
+                    suggestedSkills = Array.isArray(parsed.suggestedSkills)
+                      ? parsed.suggestedSkills
+                      : [];
+                    parameterTips = Array.isArray(parsed.parameterTips)
+                      ? parsed.parameterTips
+                      : [];
+                  }
+                } catch {
+                  // Fallback: response was not JSON — use raw text as prompt
+                  structuredData = parseStructuredData(accumulated);
+                }
+
                 const result: GenerationResult = {
-                  prompt: accumulated,
-                  structuredData: parseStructuredData(accumulated),
-                  suggestedSkills: [],
-                  parameterTips: [],
+                  prompt: parsedPrompt,
+                  structuredData,
+                  suggestedSkills,
+                  parameterTips,
                   model: store.model,
                   format: store.format,
                 };
@@ -82,7 +114,7 @@ export function useGenerate() {
                   id: crypto.randomUUID(),
                   title: store.inputText.slice(0, 80),
                   inputText: store.inputText,
-                  outputPrompt: accumulated,
+                  outputPrompt: parsedPrompt,
                   model: store.model,
                   format: store.format,
                   parameters: {
@@ -100,15 +132,6 @@ export function useGenerate() {
                 addEntry(historyEntry);
                 toast.success('Prompt generated successfully!');
               }
-            } catch (e) {
-              // Skip unparseable lines
-              if (
-                e instanceof Error &&
-                e.message !== 'Generation failed'
-              )
-                continue;
-              throw e;
-            }
           }
         }
       }

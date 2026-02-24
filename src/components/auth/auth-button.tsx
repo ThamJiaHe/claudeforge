@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Loader2, LogOut, Settings } from 'lucide-react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { useUser } from '@/hooks/use-user';
 import { Button } from '@/components/ui/button';
@@ -35,19 +36,37 @@ export function AuthButton() {
   const router = useRouter();
 
   const handleSignIn = async () => {
-    const supabase = createClient();
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      if (error) {
+        // Provider not enabled is the most common setup issue
+        if (error.message?.includes('provider')) {
+          toast.error(
+            'GitHub sign-in is not enabled. Enable GitHub OAuth in your Supabase dashboard under Authentication → Providers.'
+          );
+        } else {
+          toast.error(`Sign-in failed: ${error.message}`);
+        }
+      }
+    } catch (err) {
+      toast.error(`Sign-in failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
   };
 
   const handleSignOut = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.refresh();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.refresh();
+    } catch {
+      toast.error('Sign-out failed. Please try again.');
+    }
   };
 
   if (loading) {

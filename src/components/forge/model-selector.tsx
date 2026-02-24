@@ -17,12 +17,12 @@ export function ModelSelector() {
 
   return (
     <Select value={model} onValueChange={(v) => setModel(v as ClaudeModel)}>
-      <SelectTrigger className="w-[220px]">
+      <SelectTrigger className="w-auto min-w-[160px] max-w-[260px]">
         <SelectValue placeholder="Select model" />
       </SelectTrigger>
       <SelectContent>
         {MODELS.map((m) => (
-          <SelectItem key={m.id} value={m.id}>
+          <SelectItem key={m.id} value={m.id} textValue={m.displayName}>
             <div className="flex flex-col gap-0.5">
               <span className="font-medium">{m.displayName}</span>
               <span className="text-xs text-muted-foreground">
