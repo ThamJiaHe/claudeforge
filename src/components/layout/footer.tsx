@@ -11,7 +11,7 @@ export function Footer() {
 
         <div className="flex items-center gap-3">
           <a
-            href="#"
+            href="https://github.com/ThamJiaHe/claudeforge"
             target="_blank"
             rel="noopener noreferrer"
             className="text-muted-foreground transition-colors hover:text-foreground"
