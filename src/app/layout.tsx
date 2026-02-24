@@ -19,8 +19,40 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: `${APP_NAME} — Craft perfect Claude prompts`,
+  title: {
+    default: `${APP_NAME} — Craft perfect Claude prompts`,
+    template: `%s — ${APP_NAME}`,
+  },
   description: APP_DESCRIPTION,
+  keywords: [
+    'Claude',
+    'prompt engineering',
+    'AI prompts',
+    'Anthropic',
+    'prompt generator',
+    'Claude Code',
+    'LLM',
+  ],
+  authors: [{ name: 'ClaudeForge' }],
+  creator: 'ClaudeForge',
+  metadataBase: new URL('https://claudeforge.vercel.app'),
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://claudeforge.vercel.app',
+    siteName: APP_NAME,
+    title: `${APP_NAME} — Craft perfect Claude prompts`,
+    description: APP_DESCRIPTION,
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${APP_NAME} — Craft perfect Claude prompts`,
+    description: APP_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({
@@ -33,6 +65,12 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:ring-2 focus:ring-ring"
+        >
+          Skip to content
+        </a>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -41,7 +79,7 @@ export default function RootLayout({
         >
           <div className="flex min-h-screen flex-col">
             <Header />
-            <main className="flex-1">{children}</main>
+            <main id="main-content" className="flex-1">{children}</main>
             <Footer />
           </div>
           <Toaster />

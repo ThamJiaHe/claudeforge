@@ -7,7 +7,7 @@ import { AuthButton } from '@/components/auth/auth-button';
 
 export function Header() {
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header role="banner" className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
         {/* Left: Logo */}
         <Link href="/" className="flex items-center gap-2">
@@ -16,7 +16,7 @@ export function Header() {
 
         {/* Right: Nav + Actions */}
         <div className="flex items-center gap-1">
-          <nav className="flex items-center gap-1">
+          <nav aria-label="Main navigation" className="flex items-center gap-1">
             <Link
               href="/history"
               className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
