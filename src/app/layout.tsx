@@ -8,6 +8,7 @@ import { Footer } from '@/components/layout/footer';
 import { Toaster } from '@/components/ui/sonner';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/next';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -85,6 +86,7 @@ export default function RootLayout({
           </div>
           <Toaster />
           <SpeedInsights />
+          <Analytics />
         </ThemeProvider>
       </body>
     </html>
