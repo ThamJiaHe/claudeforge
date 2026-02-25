@@ -16,6 +16,19 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
+/** Validate avatar URL is from a trusted GitHub CDN origin */
+function isValidAvatarUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return (
+      parsed.protocol === 'https:' &&
+      parsed.hostname === 'avatars.githubusercontent.com'
+    );
+  } catch {
+    return false;
+  }
+}
+
 function getInitials(name?: string | null, email?: string | null): string {
   if (name) {
     return name
@@ -41,7 +54,7 @@ export function AuthButton() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`,
         },
       });
       if (error) {
@@ -85,7 +98,8 @@ export function AuthButton() {
     );
   }
 
-  const avatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const rawAvatarUrl = user.user_metadata?.avatar_url as string | undefined;
+  const safeAvatarUrl = rawAvatarUrl && isValidAvatarUrl(rawAvatarUrl) ? rawAvatarUrl : undefined;
   const fullName = user.user_metadata?.full_name as string | undefined;
   const email = user.email;
   const initials = getInitials(fullName, email);
@@ -95,7 +109,7 @@ export function AuthButton() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="rounded-full">
           <Avatar size="sm">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={fullName ?? 'User avatar'} />}
+            {safeAvatarUrl && <AvatarImage src={safeAvatarUrl} alt={fullName ?? 'User avatar'} />}
             <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>

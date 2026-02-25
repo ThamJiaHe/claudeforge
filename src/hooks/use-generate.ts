@@ -50,13 +50,23 @@ export function useGenerate() {
 
       const decoder = new TextDecoder();
       let accumulated = '';
+      let lineBuffer = ''; // Buffer partial lines across chunks
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        if (!done) {
+          const chunk = decoder.decode(value, { stream: true });
+          lineBuffer += chunk;
+        } else {
+          // Flush the TextDecoder and append any remaining buffered data
+          lineBuffer += decoder.decode();
+        }
+
+        // Only process complete lines (terminated by \n)
+        const lines = lineBuffer.split('\n');
+        // The last element may be an incomplete line — keep it in the buffer
+        lineBuffer = done ? '' : (lines.pop() ?? '');
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
@@ -134,6 +144,8 @@ export function useGenerate() {
               }
           }
         }
+
+        if (done) break;
       }
     } catch (error) {
       const message =

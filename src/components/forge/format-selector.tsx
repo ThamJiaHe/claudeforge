@@ -1,8 +1,7 @@
 'use client';
 
 import { useForgeStore } from '@/store/use-forge-store';
-import { FORMATS } from '@/lib/constants';
-import type { PromptFormat } from '@/lib/types';
+import { FORMATS, isValidFormat } from '@/lib/constants';
 import {
   Select,
   SelectContent,
@@ -16,7 +15,7 @@ export function FormatSelector() {
   const setFormat = useForgeStore((s) => s.setFormat);
 
   return (
-    <Select value={format} onValueChange={(v) => setFormat(v as PromptFormat)}>
+    <Select value={format} onValueChange={(v) => { if (isValidFormat(v)) setFormat(v); }}>
       <SelectTrigger className="w-auto min-w-[140px] max-w-[220px]">
         <SelectValue placeholder="Select format" />
       </SelectTrigger>

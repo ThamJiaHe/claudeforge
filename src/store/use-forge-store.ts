@@ -3,11 +3,54 @@ import { persist } from 'zustand/middleware';
 import type { ClaudeModel, PromptFormat, EffortLevel, GenerationResult } from '@/lib/types';
 import { DEFAULT_MODEL, DEFAULT_FORMAT, DEFAULT_EFFORT, DEFAULT_MAX_TOKENS } from '@/lib/constants';
 
+// ─── Session-scoped API key storage ──────────────────────
+const SESSION_KEY = 'cf-ak';
+
+/**
+ * Load API key from sessionStorage, migrating from localStorage
+ * if the user stored a key there before this security fix.
+ */
+function loadApiKey(): string {
+  if (typeof window === 'undefined') return '';
+  try {
+    const sessionVal = sessionStorage.getItem(SESSION_KEY);
+    if (sessionVal) return sessionVal;
+
+    // One-time migration: move key from old localStorage persist store
+    const stored = localStorage.getItem('claudeforge-config');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      const oldKey = parsed?.state?.apiKey;
+      if (oldKey && typeof oldKey === 'string') {
+        sessionStorage.setItem(SESSION_KEY, oldKey);
+        delete parsed.state.apiKey;
+        localStorage.setItem('claudeforge-config', JSON.stringify(parsed));
+        return oldKey;
+      }
+    }
+  } catch {
+    // Ignore storage errors
+  }
+  return '';
+}
+
+function saveApiKey(key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (key) sessionStorage.setItem(SESSION_KEY, key);
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    // sessionStorage may be unavailable
+  }
+}
+
+// ─── Store interface ─────────────────────────────────────
 interface ForgeState {
   // ─── API Key ──────────────────────────────────────────
   apiKey: string;
   setApiKey: (key: string) => void;
   clearApiKey: () => void;
+  hydrateApiKey: () => void;
 
   // ─── Configuration ────────────────────────────────────
   model: ClaudeModel;
@@ -41,10 +84,17 @@ interface ForgeState {
 export const useForgeStore = create<ForgeState>()(
   persist(
     (set) => ({
-      // API Key
+      // API Key — synced to sessionStorage (cleared on tab close), NOT localStorage
       apiKey: '',
-      setApiKey: (key) => set({ apiKey: key }),
-      clearApiKey: () => set({ apiKey: '' }),
+      setApiKey: (key) => {
+        saveApiKey(key);
+        set({ apiKey: key });
+      },
+      clearApiKey: () => {
+        saveApiKey('');
+        set({ apiKey: '' });
+      },
+      hydrateApiKey: () => set({ apiKey: loadApiKey() }),
 
       // Configuration
       model: DEFAULT_MODEL,
@@ -77,13 +127,17 @@ export const useForgeStore = create<ForgeState>()(
     {
       name: 'claudeforge-config',
       partialize: (state) => ({
-        apiKey: state.apiKey,
+        // Security: apiKey is intentionally EXCLUDED — stored in sessionStorage instead
         model: state.model,
         format: state.format,
         enableThinking: state.enableThinking,
         effort: state.effort,
         maxTokens: state.maxTokens,
       }),
+      onRehydrateStorage: () => (state) => {
+        // After localStorage config hydration, also hydrate API key from sessionStorage
+        state?.hydrateApiKey();
+      },
     }
   )
 );

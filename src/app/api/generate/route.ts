@@ -4,7 +4,37 @@ import { buildMetaPrompt } from '@/lib/engine/meta-prompt-builder';
 import { MODELS, FORMATS } from '@/lib/constants';
 import type { GenerationParams } from '@/lib/types';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
+
+// ── In-memory sliding-window rate limiter ──────────────────────
+const RATE_WINDOW_MS = 60_000; // 1 minute
+const RATE_MAX_REQUESTS = 20; // per IP per window
+const ipLog = new Map<string, number[]>();
+
+function isAllowed(ip: string): boolean {
+  const now = Date.now();
+  const cutoff = now - RATE_WINDOW_MS;
+
+  let timestamps = ipLog.get(ip) ?? [];
+  timestamps = timestamps.filter((t) => t > cutoff);
+
+  if (timestamps.length >= RATE_MAX_REQUESTS) {
+    ipLog.set(ip, timestamps);
+    return false;
+  }
+
+  timestamps.push(now);
+  ipLog.set(ip, timestamps);
+
+  // Inline GC: prune stale IPs when map grows large
+  if (ipLog.size > 10_000) {
+    for (const [key, ts] of ipLog) {
+      if (ts.every((t) => t <= cutoff)) ipLog.delete(key);
+    }
+  }
+
+  return true;
+}
 
 // ── Allowed values for strict validation ───────────────────────
 const VALID_MODEL_IDS = new Set(MODELS.map((m) => m.id));
@@ -28,6 +58,17 @@ function sanitizeError(error: unknown): string {
 }
 
 export async function POST(request: NextRequest) {
+  // ── Rate limiting ─────────────────────────────────────────
+  const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+  if (!isAllowed(clientIp)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many requests. Please wait a moment and try again.' }),
+      { status: 429, headers: { 'Content-Type': 'application/json', 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const { text, params, apiKey } = (await request.json()) as {
       text: string;

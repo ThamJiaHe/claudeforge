@@ -59,6 +59,15 @@ export const DEFAULT_FORMAT = 'xml' as const;
 export const DEFAULT_EFFORT = 'medium' as const;
 export const DEFAULT_MAX_TOKENS = 4096;
 
+// ── Runtime type guards ──────────────────────────────────
+export function isValidModel(value: string): value is import('./types').ClaudeModel {
+  return MODELS.some((m) => m.id === value);
+}
+
+export function isValidFormat(value: string): value is import('./types').PromptFormat {
+  return FORMATS.some((f) => f.id === value);
+}
+
 export const APP_NAME = 'ClaudeForge';
 export const APP_DESCRIPTION = 'Craft perfect Claude prompts from plain English';
 export const APP_VERSION = '0.1.0';

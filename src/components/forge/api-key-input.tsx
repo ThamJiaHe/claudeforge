@@ -1,10 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, EyeOff, Pencil, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Pencil, KeyRound, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useForgeStore } from '@/store/use-forge-store';
+
+/** Validates that the key looks like an Anthropic API key */
+function isValidApiKeyFormat(key: string): boolean {
+  return /^sk-ant-[a-zA-Z0-9_-]{10,}$/.test(key);
+}
 
 export function ApiKeyInput() {
   const apiKey = useForgeStore((s) => s.apiKey);
@@ -12,23 +17,34 @@ export function ApiKeyInput() {
   const [showKey, setShowKey] = useState(false);
   const [isEditing, setIsEditing] = useState(!apiKey);
 
+  const hasKey = apiKey.length > 0;
+  const formatWarning = hasKey && !isValidApiKeyFormat(apiKey);
+
   // When the key is set and user is not editing, show collapsed view
   if (apiKey && !isEditing) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <KeyRound className="size-3.5" />
-        <span className="font-mono">
-          API Key: {'*'.repeat(Math.min(apiKey.length, 20))}
-        </span>
-        <Button
-          variant="ghost"
-          size="xs"
-          onClick={() => setIsEditing(true)}
-          className="text-muted-foreground hover:text-foreground"
-        >
-          <Pencil className="size-3" />
-          Edit
-        </Button>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <KeyRound className="size-3.5" />
+          <span className="font-mono">
+            API Key: {'*'.repeat(Math.min(apiKey.length, 20))}
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => setIsEditing(true)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Pencil className="size-3" />
+            Edit
+          </Button>
+        </div>
+        {formatWarning && (
+          <p className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-500">
+            <AlertTriangle className="size-3" />
+            Key format doesn&apos;t match expected pattern (sk-ant-...)
+          </p>
+        )}
       </div>
     );
   }
@@ -75,9 +91,15 @@ export function ApiKeyInput() {
           </Button>
         )}
       </div>
+      {formatWarning && (
+        <p className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-500">
+          <AlertTriangle className="size-3" />
+          Key format doesn&apos;t match expected pattern (sk-ant-...)
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
-        Your API key is stored locally in your browser. Never sent to our
-        servers.
+        Stored in this browser tab only (sessionStorage). Your key is sent to our
+        server solely to proxy the Anthropic API&nbsp;&mdash; never stored server-side.
       </p>
     </form>
   );
