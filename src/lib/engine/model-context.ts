@@ -46,7 +46,7 @@ export function getModelContext(target: TargetId, providerModelId?: string): str
         `Target model family: Google Gemini`,
         `Generator model: ${modelLabel}`,
         '',
-        'Optimize the generated prompt for Gemini models (2.5 Pro, 2.5 Flash):',
+        'Optimize the generated prompt for Gemini models (2.5 Pro, 2.5 Flash, 2.5 Flash Lite):',
         '- Gemini has a massive context window (1M+ tokens) — use that advantage',
         '- Structured prompts with clear sections work well',
         '- Gemini excels at multimodal tasks — mention image/video handling if relevant',
