@@ -6,6 +6,10 @@ import type { GenerationParams } from '@/lib/types';
 
 export const runtime = 'nodejs';
 
+// Allow up to 60 s on Vercel Hobby (default is only 10 s for Node.js functions).
+// The Anthropic API streaming call often exceeds the 10 s default.
+export const maxDuration = 60;
+
 // ── In-memory sliding-window rate limiter ──────────────────────
 const RATE_WINDOW_MS = 60_000; // 1 minute
 const RATE_MAX_REQUESTS = 20; // per IP per window
@@ -45,16 +49,46 @@ const MAX_OUTPUT_TOKENS = 128_000;
 
 /** Sanitise Anthropic SDK errors so no API keys or internals leak to client */
 function sanitizeError(error: unknown): string {
-  const msg = String(error);
-  if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key'))
+  // Always log full error server-side for debugging (visible in Vercel logs)
+  console.error('[generate] API error:', error);
+
+  const msg = String(error).toLowerCase();
+
+  // Authentication
+  if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key') || msg.includes('invalid_api_key'))
     return 'Invalid API key. Please check your Anthropic API key.';
+
+  // Rate limiting
   if (msg.includes('rate_limit') || msg.includes('429'))
     return 'Rate limit exceeded. Please wait and try again.';
+
+  // Overloaded
   if (msg.includes('overloaded') || msg.includes('529'))
     return 'Anthropic API is temporarily overloaded. Please retry.';
-  if (msg.includes('Could not resolve the model'))
+
+  // Model not found
+  if (msg.includes('could not resolve the model') || msg.includes('not_found_error') || msg.includes('model:'))
     return 'Invalid model selected. Please choose a supported Claude model.';
-  return 'An unexpected error occurred during generation.';
+
+  // Permission / access
+  if (msg.includes('permission') || msg.includes('forbidden') || msg.includes('403'))
+    return 'Your API key does not have permission to use this model.';
+
+  // Timeout / abort
+  if (msg.includes('timeout') || msg.includes('aborted') || msg.includes('econnreset') || msg.includes('function_invocation_timeout'))
+    return 'Request timed out. Please try again with a shorter prompt or a faster model.';
+
+  // Network / connection
+  if (msg.includes('econnrefused') || msg.includes('fetch failed') || msg.includes('network') || msg.includes('dns'))
+    return 'Could not reach the Anthropic API. Please check your connection and try again.';
+
+  // Invalid request body (e.g. too many tokens)
+  if (msg.includes('invalid_request_error') || msg.includes('400'))
+    return 'Invalid request. Please check your parameters and try again.';
+
+  // Catch-all — include error class name for diagnostics without leaking secrets
+  const errorType = error instanceof Error ? error.constructor.name : 'Unknown';
+  return `Generation failed (${errorType}). Please try again or switch models.`;
 }
 
 export async function POST(request: NextRequest) {
@@ -155,11 +189,16 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(`data: ${doneChunk}\n\n`));
           controller.close();
         } catch (streamError) {
+          console.error('[generate] Stream error:', streamError);
           const errorChunk = JSON.stringify({
             error: sanitizeError(streamError),
           });
-          controller.enqueue(encoder.encode(`data: ${errorChunk}\n\n`));
-          controller.close();
+          try {
+            controller.enqueue(encoder.encode(`data: ${errorChunk}\n\n`));
+            controller.close();
+          } catch {
+            // Controller may already be closed if client disconnected
+          }
         }
       },
     });

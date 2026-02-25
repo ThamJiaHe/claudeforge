@@ -67,18 +67,29 @@ describe('rate limiter', () => {
 // ── Finding 7 (already fixed): Error sanitization ────────
 
 describe('sanitizeError', () => {
-  // Re-implement for testing
+  // Re-implement for testing (mirrors route.ts sanitizeError without console.error)
   function sanitizeError(error: unknown): string {
-    const msg = String(error);
-    if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key'))
+    const msg = String(error).toLowerCase();
+
+    if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key') || msg.includes('invalid_api_key'))
       return 'Invalid API key. Please check your Anthropic API key.';
     if (msg.includes('rate_limit') || msg.includes('429'))
       return 'Rate limit exceeded. Please wait and try again.';
     if (msg.includes('overloaded') || msg.includes('529'))
       return 'Anthropic API is temporarily overloaded. Please retry.';
-    if (msg.includes('Could not resolve the model'))
+    if (msg.includes('could not resolve the model') || msg.includes('not_found_error') || msg.includes('model:'))
       return 'Invalid model selected. Please choose a supported Claude model.';
-    return 'An unexpected error occurred during generation.';
+    if (msg.includes('permission') || msg.includes('forbidden') || msg.includes('403'))
+      return 'Your API key does not have permission to use this model.';
+    if (msg.includes('timeout') || msg.includes('aborted') || msg.includes('econnreset') || msg.includes('function_invocation_timeout'))
+      return 'Request timed out. Please try again with a shorter prompt or a faster model.';
+    if (msg.includes('econnrefused') || msg.includes('fetch failed') || msg.includes('network') || msg.includes('dns'))
+      return 'Could not reach the Anthropic API. Please check your connection and try again.';
+    if (msg.includes('invalid_request_error') || msg.includes('400'))
+      return 'Invalid request. Please check your parameters and try again.';
+
+    const errorType = error instanceof Error ? error.constructor.name : 'Unknown';
+    return `Generation failed (${errorType}). Please try again or switch models.`;
   }
 
   it('sanitizes auth errors', () => {
@@ -93,9 +104,49 @@ describe('sanitizeError', () => {
     );
   });
 
-  it('hides unknown error details', () => {
+  it('hides unknown error details (no API key leaking)', () => {
     expect(sanitizeError('Internal: sk-ant-api03-SECRET leaked')).toBe(
-      'An unexpected error occurred during generation.'
+      'Generation failed (Unknown). Please try again or switch models.'
+    );
+  });
+
+  it('sanitizes timeout errors', () => {
+    expect(sanitizeError('FUNCTION_INVOCATION_TIMEOUT')).toBe(
+      'Request timed out. Please try again with a shorter prompt or a faster model.'
+    );
+  });
+
+  it('sanitizes network errors', () => {
+    expect(sanitizeError('TypeError: fetch failed')).toBe(
+      'Could not reach the Anthropic API. Please check your connection and try again.'
+    );
+  });
+
+  it('sanitizes permission errors', () => {
+    expect(sanitizeError('Error: 403 forbidden')).toBe(
+      'Your API key does not have permission to use this model.'
+    );
+  });
+
+  it('sanitizes model not found errors', () => {
+    expect(sanitizeError('not_found_error: model: claude-unknown')).toBe(
+      'Invalid model selected. Please choose a supported Claude model.'
+    );
+  });
+
+  it('sanitizes overload errors', () => {
+    expect(sanitizeError('Error: 529 overloaded')).toBe(
+      'Anthropic API is temporarily overloaded. Please retry.'
+    );
+  });
+
+  it('includes error class name for typed errors', () => {
+    const err = new TypeError('something unexpected');
+    // TypeError contains 'network' substring? No — but msg includes 'typeerror' now
+    // Actually "typeerror: something unexpected" doesn't match any pattern
+    // So it falls through to the catch-all with the class name
+    expect(sanitizeError(err)).toBe(
+      'Generation failed (TypeError). Please try again or switch models.'
     );
   });
 });
