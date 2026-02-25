@@ -58,5 +58,7 @@ export interface ProviderAdapter {
     userMessage: string;
     maxTokens: number;
     baseUrl?: string;
+    /** Display name of the selected provider (for user-facing error messages) */
+    providerName?: string;
   }): AsyncIterable<StreamChunk>;
 }

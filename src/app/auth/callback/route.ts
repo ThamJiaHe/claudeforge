@@ -10,14 +10,25 @@ export async function GET(request: Request) {
   // Prevent open redirect: only allow relative paths starting with single /
   const safeNext = /^\/[^\/\\@]/.test(nextRaw) ? nextRaw : '/';
 
-  // Supabase may redirect here with an error param (e.g. provider config issues)
+  // Supabase may redirect here with an error param (e.g. provider config issues).
+  // The most common transient error is "Error getting user profile from external
+  // provider" — Supabase sends this as ?error=server_error before code exchange.
   if (errorParam) {
+    const desc = errorDescription ?? '';
+    const isProviderError =
+      errorParam === 'server_error' && /external provider/i.test(desc);
+
     console.error('[auth/callback] Supabase redirect error:', {
       error: errorParam,
-      description: errorDescription,
+      description: desc,
+      isProviderError,
     });
+
+    // Map the raw Supabase error key to our app-specific key for better UX
+    const errorKey = isProviderError ? 'provider_error' : encodeURIComponent(errorParam);
+
     return NextResponse.redirect(
-      `${origin}/?error=${encodeURIComponent(errorParam)}&error_description=${encodeURIComponent(errorDescription ?? '')}`
+      `${origin}/?error=${errorKey}&error_description=${encodeURIComponent(desc)}`
     );
   }
 

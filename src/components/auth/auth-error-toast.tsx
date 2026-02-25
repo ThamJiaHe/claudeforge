@@ -22,18 +22,24 @@ export function AuthErrorToast() {
       auth_failed: 'Sign-in failed. Please try again.',
       auth_exchange_failed: `Sign-in failed: ${description ?? 'Could not exchange auth code.'}`,
       auth_no_code: 'Sign-in callback received no authorization code.',
+      // Supabase "Error getting user profile from external provider" — transient
+      provider_error:
+        'Your sign-in provider was temporarily unavailable. Please try signing in again.',
+      // Supabase may send `server_error` directly as the error param
+      server_error:
+        'The sign-in service encountered a temporary error. Please try again in a moment.',
     };
 
     let message = messages[error];
 
     if (!message) {
-      // Handle the common "Error getting user profile from external provider" error
+      // Fallback: detect provider-related errors from the description
       const desc = description ?? error;
       if (/external provider/i.test(desc) || /provider/i.test(desc)) {
         message =
-          'Could not fetch your profile from the sign-in provider. This is usually a temporary issue — please try again in a moment.';
+          'Your sign-in provider was temporarily unavailable. Please try signing in again.';
       } else {
-        message = desc ? `Auth error: ${desc}` : `Auth error: ${error}`;
+        message = desc ? `Sign-in error: ${desc}` : `Sign-in error: ${error}`;
       }
     }
 

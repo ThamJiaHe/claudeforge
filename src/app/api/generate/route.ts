@@ -87,6 +87,42 @@ export async function POST(request: NextRequest) {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
+
+    // ── API key / provider mismatch detection (defense-in-depth) ─────
+    // If the client sent a key that doesn't match the selected provider's
+    // expected prefix, the user likely switched providers in the UI but a
+    // stale request was fired.  Return a helpful error instead of a
+    // confusing 401 from the wrong adapter.
+    if (provider.requiresApiKey && apiKey && provider.apiKeyPrefix) {
+      try {
+        const prefixRe = new RegExp(provider.apiKeyPrefix);
+        if (!prefixRe.test(apiKey)) {
+          // Try to identify which provider the key actually belongs to
+          const allProviders = (await import('@/lib/providers/registry')).PROVIDERS;
+          const matchedProvider = allProviders.find((p) => {
+            if (!p.apiKeyPrefix || p.id === provider.id) return false;
+            try { return new RegExp(p.apiKeyPrefix).test(apiKey); } catch { return false; }
+          });
+
+          const hint = matchedProvider
+            ? `Your API key looks like a ${matchedProvider.name} key, but "${provider.name}" is selected as the provider.`
+            : `Your API key format doesn't match what ${provider.name} expects (${provider.apiKeyPlaceholder}).`;
+
+          console.warn('[generate] API key/provider mismatch:', {
+            selectedProvider: provider.id,
+            expectedPrefix: provider.apiKeyPlaceholder,
+            matchedProvider: matchedProvider?.id ?? 'none',
+          });
+
+          return new Response(
+            JSON.stringify({ error: `${hint} Please check your provider selection and API key.` }),
+            { status: 400, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+      } catch {
+        // If prefix regex is invalid, skip this check gracefully
+      }
+    }
     if (!text || typeof text !== 'string' || text.length > MAX_TEXT_LENGTH) {
       return new Response(
         JSON.stringify({ error: `Prompt text is required and must be under ${MAX_TEXT_LENGTH.toLocaleString()} characters` }),
@@ -156,6 +192,7 @@ export async function POST(request: NextRequest) {
             userMessage: `${userPrefix}\n\nUser's request:\n${text}`,
             maxTokens,
             baseUrl,
+            providerName: provider.name,
           });
 
           for await (const chunk of chunks) {

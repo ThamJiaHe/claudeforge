@@ -7,43 +7,50 @@ import type { GenerationResult, PromptHistoryEntry } from '@/lib/types';
 import { toast } from 'sonner';
 
 export function useGenerate() {
-  const store = useForgeStore();
+  // Subscribe reactively only for the values we return from the hook
+  const isGenerating = useForgeStore((s) => s.isGenerating);
   const addEntry = useHistoryStore((s) => s.addEntry);
 
   const generate = async () => {
+    // ── Read FRESH state at call time (not stale render-time closure) ──
+    // This fixes the critical bug where switching provider in the UI
+    // wouldn't propagate to the generate() closure if React hadn't
+    // re-rendered yet, causing e.g. Gemini keys to be sent to Anthropic.
+    const state = useForgeStore.getState();
+
     // Provider-aware API key validation
-    const provider = getProvider(store.provider);
-    if (provider?.requiresApiKey && !store.apiKey) {
+    const provider = getProvider(state.provider);
+    if (provider?.requiresApiKey && !state.apiKey) {
       toast.error(`Please enter your ${provider.name} API key`);
       return;
     }
-    if (!store.inputText.trim()) {
+    if (!state.inputText.trim()) {
       toast.error('Please enter a prompt to transform');
       return;
     }
 
-    store.setIsGenerating(true);
-    store.setError(null);
-    store.setResult(null);
+    state.setIsGenerating(true);
+    state.setError(null);
+    state.setResult(null);
 
     try {
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: store.inputText,
+          text: state.inputText,
           params: {
-            provider: store.provider,
-            model: store.model,
-            target: store.target,
-            format: store.format,
-            enableThinking: store.enableThinking,
-            effort: store.effort,
-            maxTokens: store.maxTokens,
-            customBaseUrl: store.customBaseUrl || undefined,
-            customModelName: store.customModelName || undefined,
+            provider: state.provider,
+            model: state.model,
+            target: state.target,
+            format: state.format,
+            enableThinking: state.enableThinking,
+            effort: state.effort,
+            maxTokens: state.maxTokens,
+            customBaseUrl: state.customBaseUrl || undefined,
+            customModelName: state.customModelName || undefined,
           },
-          apiKey: store.apiKey,
+          apiKey: state.apiKey,
         }),
       });
 
@@ -121,29 +128,29 @@ export function useGenerate() {
                   structuredData,
                   suggestedSkills,
                   parameterTips,
-                  model: store.model,
-                  format: store.format,
+                  model: state.model,
+                  format: state.format,
                 };
-                store.setResult(result);
+                state.setResult(result);
 
                 // Add to history
                 const historyEntry: PromptHistoryEntry = {
                   id: crypto.randomUUID(),
-                  title: store.inputText.slice(0, 80),
-                  inputText: store.inputText,
+                  title: state.inputText.slice(0, 80),
+                  inputText: state.inputText,
                   outputPrompt: parsedPrompt,
-                  model: store.model,
-                  format: store.format,
+                  model: state.model,
+                  format: state.format,
                   parameters: {
-                    provider: store.provider,
-                    model: store.model,
-                    target: store.target,
-                    format: store.format,
-                    enableThinking: store.enableThinking,
-                    effort: store.effort,
-                    maxTokens: store.maxTokens,
-                    customBaseUrl: store.customBaseUrl || undefined,
-                    customModelName: store.customModelName || undefined,
+                    provider: state.provider,
+                    model: state.model,
+                    target: state.target,
+                    format: state.format,
+                    enableThinking: state.enableThinking,
+                    effort: state.effort,
+                    maxTokens: state.maxTokens,
+                    customBaseUrl: state.customBaseUrl || undefined,
+                    customModelName: state.customModelName || undefined,
                   },
                   suggestedSkills: [],
                   isFavorite: false,
@@ -161,14 +168,14 @@ export function useGenerate() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Unknown error';
-      store.setError(message);
+      state.setError(message);
       toast.error(`Generation failed: ${message}`);
     } finally {
-      store.setIsGenerating(false);
+      state.setIsGenerating(false);
     }
   };
 
-  return { generate, isGenerating: store.isGenerating };
+  return { generate, isGenerating };
 }
 
 // Simple parser to extract structured data from the prompt output

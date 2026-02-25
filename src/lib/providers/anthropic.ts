@@ -2,31 +2,32 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { ProviderAdapter, StreamChunk } from './types';
 
 /** Sanitise Anthropic SDK errors — no API keys leak to client */
-function sanitizeAnthropicError(error: unknown): string {
-  console.error('[anthropic-adapter] API error:', error);
+function sanitizeAnthropicError(error: unknown, providerName?: string): string {
+  const label = providerName ?? 'Anthropic';
+  console.error(`[anthropic-adapter] API error (provider: ${label}):`, error);
 
-  if (error instanceof Anthropic.AuthenticationError) return 'Invalid API key. Please check your Anthropic API key.';
+  if (error instanceof Anthropic.AuthenticationError) return `Invalid API key. Please check your ${label} API key.`;
   if (error instanceof Anthropic.RateLimitError) return 'Rate limit exceeded. Please wait and try again.';
   if (error instanceof Anthropic.PermissionDeniedError) return 'Your API key does not have permission to use this model.';
-  if (error instanceof Anthropic.NotFoundError) return 'Model not found. Please choose a supported Claude model.';
+  if (error instanceof Anthropic.NotFoundError) return `Model not found. Please choose a supported ${label} model.`;
   if (error instanceof Anthropic.BadRequestError) {
     const m = error.message.match(/"message"\s*:\s*"([^"]+)"/);
     return `Invalid request: ${m?.[1] ?? error.message}`;
   }
-  if (error instanceof Anthropic.InternalServerError) return 'Anthropic API server error. Please retry.';
-  if (error instanceof Anthropic.APIConnectionError) return 'Could not reach the Anthropic API.';
+  if (error instanceof Anthropic.InternalServerError) return `${label} API server error. Please retry.`;
+  if (error instanceof Anthropic.APIConnectionError) return `Could not reach the ${label} API.`;
   if (error instanceof Anthropic.APIError) return `API error (${error.status ?? 'unknown'})`;
 
   const msg = String(error).toLowerCase();
-  if (msg.includes('overloaded') || msg.includes('529')) return 'Anthropic API is temporarily overloaded.';
+  if (msg.includes('overloaded') || msg.includes('529')) return `${label} API is temporarily overloaded.`;
   if (msg.includes('timeout') || msg.includes('aborted')) return 'Request timed out.';
-  if (msg.includes('econnrefused') || msg.includes('fetch failed')) return 'Could not reach the Anthropic API.';
+  if (msg.includes('econnrefused') || msg.includes('fetch failed')) return `Could not reach the ${label} API.`;
   return 'Generation failed. Please try again.';
 }
 
 export function createAnthropicAdapter(): ProviderAdapter {
   return {
-    async *stream({ apiKey, model, system, userMessage, maxTokens }) {
+    async *stream({ apiKey, model, system, userMessage, maxTokens, providerName }) {
       const client = new Anthropic({ apiKey });
 
       try {
@@ -52,7 +53,7 @@ export function createAnthropicAdapter(): ProviderAdapter {
           usage: final.usage,
         } satisfies StreamChunk;
       } catch (err) {
-        yield { type: 'error', error: sanitizeAnthropicError(err) } satisfies StreamChunk;
+        yield { type: 'error', error: sanitizeAnthropicError(err, providerName) } satisfies StreamChunk;
       }
     },
   };
