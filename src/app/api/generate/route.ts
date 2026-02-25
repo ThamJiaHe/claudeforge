@@ -47,44 +47,65 @@ const VALID_EFFORTS = new Set(['low', 'medium', 'high', 'max']);
 const MAX_TEXT_LENGTH = 50_000;
 const MAX_OUTPUT_TOKENS = 128_000;
 
+/**
+ * Extract a human-readable detail from an Anthropic API error.
+ * The SDK often wraps the JSON response in its message; we parse out the
+ * inner "message" field so the user sees actionable information.
+ */
+function extractApiDetail(raw: string): string {
+  // Try to pull the inner "message" from a JSON body embedded in the string
+  const jsonMatch = raw.match(/"message"\s*:\s*"([^"]+)"/);
+  if (jsonMatch?.[1]) return jsonMatch[1];
+  // Fallback: use the raw message, but strip HTTP status prefix (e.g. "400 {…}")
+  const cleaned = raw.replace(/^\d{3}\s*/, '').trim();
+  return cleaned.length > 0 && cleaned.length < 300 ? cleaned : 'Unknown error';
+}
+
 /** Sanitise Anthropic SDK errors so no API keys or internals leak to client */
 function sanitizeError(error: unknown): string {
   // Always log full error server-side for debugging (visible in Vercel logs)
   console.error('[generate] API error:', error);
 
+  // ── Anthropic SDK structured errors (preferred — most accurate) ──
+  if (error instanceof Anthropic.AuthenticationError) {
+    return 'Invalid API key. Please check your Anthropic API key.';
+  }
+  if (error instanceof Anthropic.RateLimitError) {
+    return 'Rate limit exceeded. Please wait and try again.';
+  }
+  if (error instanceof Anthropic.PermissionDeniedError) {
+    return 'Your API key does not have permission to use this model.';
+  }
+  if (error instanceof Anthropic.NotFoundError) {
+    return `Model not found: ${extractApiDetail(error.message)}. Please choose a supported Claude model or update your SDK.`;
+  }
+  if (error instanceof Anthropic.BadRequestError) {
+    // BadRequestError describes parameter issues (not API keys) — safe to surface
+    return `Invalid request: ${extractApiDetail(error.message)}`;
+  }
+  if (error instanceof Anthropic.InternalServerError) {
+    return 'Anthropic API server error. Please retry in a moment.';
+  }
+  if (error instanceof Anthropic.APIConnectionError) {
+    return 'Could not reach the Anthropic API. Please check your connection and try again.';
+  }
+  if (error instanceof Anthropic.APIError) {
+    // Catch-all for other API errors
+    const detail = extractApiDetail(error.message);
+    return `API error (${error.status ?? 'unknown'}): ${detail}`;
+  }
+
+  // ── Non-SDK errors — fall back to string matching ──────────────
   const msg = String(error).toLowerCase();
 
-  // Authentication
-  if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid x-api-key') || msg.includes('invalid_api_key'))
-    return 'Invalid API key. Please check your Anthropic API key.';
-
-  // Rate limiting
-  if (msg.includes('rate_limit') || msg.includes('429'))
-    return 'Rate limit exceeded. Please wait and try again.';
-
-  // Overloaded
   if (msg.includes('overloaded') || msg.includes('529'))
     return 'Anthropic API is temporarily overloaded. Please retry.';
 
-  // Model not found
-  if (msg.includes('could not resolve the model') || msg.includes('not_found_error') || msg.includes('model:'))
-    return 'Invalid model selected. Please choose a supported Claude model.';
-
-  // Permission / access
-  if (msg.includes('permission') || msg.includes('forbidden') || msg.includes('403'))
-    return 'Your API key does not have permission to use this model.';
-
-  // Timeout / abort
   if (msg.includes('timeout') || msg.includes('aborted') || msg.includes('econnreset') || msg.includes('function_invocation_timeout'))
     return 'Request timed out. Please try again with a shorter prompt or a faster model.';
 
-  // Network / connection
   if (msg.includes('econnrefused') || msg.includes('fetch failed') || msg.includes('network') || msg.includes('dns'))
     return 'Could not reach the Anthropic API. Please check your connection and try again.';
-
-  // Invalid request body (e.g. too many tokens)
-  if (msg.includes('invalid_request_error') || msg.includes('400'))
-    return 'Invalid request. Please check your parameters and try again.';
 
   // Catch-all — include error class name for diagnostics without leaking secrets
   const errorType = error instanceof Error ? error.constructor.name : 'Unknown';
@@ -141,8 +162,6 @@ export async function POST(request: NextRequest) {
         { status: 400, headers: { 'Content-Type': 'application/json' } }
       );
     }
-    const maxTokens = Math.min(Math.max(1, Math.floor(params.maxTokens)), MAX_OUTPUT_TOKENS);
-
     // ── Build meta-prompt and resolve model string ─────────────
     const client = new Anthropic({ apiKey });
     const { system, userPrefix } = buildMetaPrompt(params);
@@ -150,6 +169,12 @@ export async function POST(request: NextRequest) {
     // Look up the actual API model string from constants (validated above)
     const modelInfo = MODELS.find((m) => m.id === params.model)!;
     const modelString = modelInfo.apiString;
+
+    // Cap max_tokens to the model's actual maximum (not the global 128K ceiling)
+    const maxTokens = Math.min(
+      Math.max(1, Math.floor(params.maxTokens)),
+      modelInfo.maxOutputTokens
+    );
 
     // ── Start streaming from the Anthropic API ────────────────
     const stream = await client.messages.stream({

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 
@@ -6,6 +7,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Toaster } from '@/components/ui/sonner';
+import { AuthErrorToast } from '@/components/auth/auth-error-toast';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
@@ -84,6 +86,9 @@ export default function RootLayout({
             <main id="main-content" className="flex-1">{children}</main>
             <Footer />
           </div>
+          <Suspense fallback={null}>
+            <AuthErrorToast />
+          </Suspense>
           <Toaster />
           <SpeedInsights />
           <Analytics />
