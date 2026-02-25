@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useForgeStore } from '@/store/use-forge-store';
-import { MODELS } from '@/lib/constants';
+import { getProvider } from '@/lib/providers';
 import type { EffortLevel } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,17 +20,18 @@ const EFFORT_LEVELS: { value: EffortLevel; label: string }[] = [
 ];
 
 export function EffortSelector() {
+  const provider = useForgeStore((s) => s.provider);
   const model = useForgeStore((s) => s.model);
   const enableThinking = useForgeStore((s) => s.enableThinking);
   const effort = useForgeStore((s) => s.effort);
   const setEffort = useForgeStore((s) => s.setEffort);
 
-  const modelInfo = useMemo(
-    () => MODELS.find((m) => m.id === model),
-    [model]
-  );
-
-  const supportsEffortMax = modelInfo?.supportsEffortMax ?? false;
+  // Only Claude Opus 4.6 supports the "max" effort level
+  const supportsEffortMax = useMemo(() => {
+    const prov = getProvider(provider);
+    const modelDef = prov?.models.find((m) => m.id === model);
+    return modelDef?.id === 'claude-opus-4-6';
+  }, [provider, model]);
 
   // Only visible when extended thinking is enabled
   if (!enableThinking) {

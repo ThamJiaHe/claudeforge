@@ -1,19 +1,4 @@
-// ─── Model Types ────────────────────────────────────────
-export type ClaudeModel = 'claude-opus-4-6' | 'claude-sonnet-4-6' | 'claude-haiku-4-5';
-
-export interface ModelInfo {
-  id: ClaudeModel;
-  apiString: string;
-  displayName: string;
-  description: string;
-  supportsThinking: boolean;
-  supportsAdaptiveThinking: boolean;
-  supportsEffortMax: boolean;
-  maxOutputTokens: number;
-  contextWindow: number;
-  inputPricePer1M: number;
-  outputPricePer1M: number;
-}
+import type { ProviderId, TargetId } from './providers/types';
 
 // ─── Format Types ───────────────────────────────────────
 export type PromptFormat =
@@ -39,11 +24,15 @@ export interface FormatInfo {
 export type EffortLevel = 'low' | 'medium' | 'high' | 'max';
 
 export interface GenerationParams {
-  model: ClaudeModel;
+  provider: ProviderId;
+  model: string;
+  target: TargetId;
   format: PromptFormat;
   enableThinking: boolean;
   effort: EffortLevel;
   maxTokens: number;
+  customBaseUrl?: string;
+  customModelName?: string;
 }
 
 // ─── Generation Types ───────────────────────────────────
@@ -58,7 +47,7 @@ export interface GenerationResult {
   structuredData: Record<string, string>; // for format conversion
   suggestedSkills: SkillSuggestion[];
   parameterTips: string[];
-  model: ClaudeModel;
+  model: string;
   format: PromptFormat;
 }
 
@@ -85,7 +74,7 @@ export interface PromptHistoryEntry {
   title: string;
   inputText: string;
   outputPrompt: string;
-  model: ClaudeModel;
+  model: string;
   format: PromptFormat;
   parameters: GenerationParams;
   suggestedSkills: string[];
@@ -98,7 +87,10 @@ export interface PromptHistoryEntry {
 export interface UserProfile {
   id: string;
   displayName: string | null;
-  preferredModel: ClaudeModel;
+  preferredModel: string;
   preferredFormat: PromptFormat;
   theme: 'light' | 'dark' | 'system';
 }
+
+// ─── Re-export provider types for convenience ───────────
+export type { ProviderId, TargetId } from './providers/types';

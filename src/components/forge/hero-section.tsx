@@ -39,14 +39,14 @@ export function HeroSection() {
           className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
           variants={childVariants}
         >
-          Craft perfect Claude prompts
+          Craft perfect AI prompts
         </motion.h1>
         <motion.p
           className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg"
           variants={childVariants}
         >
-          Transform plain English into production-ready, model-optimized prompts
-          for Claude Opus, Sonnet, and Haiku
+          Transform plain English into production-ready prompts optimized
+          for Claude, GPT, Gemini, Llama, and more
         </motion.p>
       </motion.div>
     </section>

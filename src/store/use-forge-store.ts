@@ -1,7 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ClaudeModel, PromptFormat, EffortLevel, GenerationResult } from '@/lib/types';
-import { DEFAULT_MODEL, DEFAULT_FORMAT, DEFAULT_EFFORT, DEFAULT_MAX_TOKENS } from '@/lib/constants';
+import type { PromptFormat, EffortLevel, GenerationResult, ProviderId, TargetId } from '@/lib/types';
+import {
+  DEFAULT_PROVIDER,
+  DEFAULT_MODEL,
+  DEFAULT_TARGET,
+  DEFAULT_FORMAT,
+  DEFAULT_EFFORT,
+  DEFAULT_MAX_TOKENS,
+} from '@/lib/constants';
 
 // ─── Session-scoped API key storage ──────────────────────
 const SESSION_KEY = 'cf-ak';
@@ -52,13 +59,23 @@ interface ForgeState {
   clearApiKey: () => void;
   hydrateApiKey: () => void;
 
+  // ─── Provider + Target ─────────────────────────────────
+  provider: ProviderId;
+  target: TargetId;
+  customBaseUrl: string;
+  customModelName: string;
+  setProvider: (provider: ProviderId) => void;
+  setTarget: (target: TargetId) => void;
+  setCustomBaseUrl: (url: string) => void;
+  setCustomModelName: (name: string) => void;
+
   // ─── Configuration ────────────────────────────────────
-  model: ClaudeModel;
+  model: string;
   format: PromptFormat;
   enableThinking: boolean;
   effort: EffortLevel;
   maxTokens: number;
-  setModel: (model: ClaudeModel) => void;
+  setModel: (model: string) => void;
   setFormat: (format: PromptFormat) => void;
   setEnableThinking: (enabled: boolean) => void;
   setEffort: (effort: EffortLevel) => void;
@@ -96,6 +113,16 @@ export const useForgeStore = create<ForgeState>()(
       },
       hydrateApiKey: () => set({ apiKey: loadApiKey() }),
 
+      // Provider + Target
+      provider: DEFAULT_PROVIDER,
+      target: DEFAULT_TARGET,
+      customBaseUrl: '',
+      customModelName: '',
+      setProvider: (provider) => set({ provider }),
+      setTarget: (target) => set({ target }),
+      setCustomBaseUrl: (customBaseUrl) => set({ customBaseUrl }),
+      setCustomModelName: (customModelName) => set({ customModelName }),
+
       // Configuration
       model: DEFAULT_MODEL,
       format: DEFAULT_FORMAT,
@@ -128,7 +155,11 @@ export const useForgeStore = create<ForgeState>()(
       name: 'claudeforge-config',
       partialize: (state) => ({
         // Security: apiKey is intentionally EXCLUDED — stored in sessionStorage instead
+        provider: state.provider,
         model: state.model,
+        target: state.target,
+        customBaseUrl: state.customBaseUrl,
+        customModelName: state.customModelName,
         format: state.format,
         enableThinking: state.enableThinking,
         effort: state.effort,

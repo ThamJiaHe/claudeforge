@@ -1,24 +1,24 @@
 import { describe, it, expect } from 'vitest';
-import { MODELS, FORMATS, isValidModel, isValidFormat } from './constants';
+import { PROVIDERS, FORMATS, isValidFormat, isValidProviderModel } from './constants';
 
-// ── Finding 12: Runtime type guards ───────────────────────
+// ── Provider & Model validation ─────────────────────────
 
-describe('isValidModel', () => {
-  it('accepts all defined model IDs', () => {
-    for (const m of MODELS) {
-      expect(isValidModel(m.id)).toBe(true);
+describe('isValidProviderModel', () => {
+  it('accepts valid provider-model combinations', () => {
+    for (const p of PROVIDERS) {
+      for (const m of p.models) {
+        expect(isValidProviderModel(p.id, m.id)).toBe(true);
+      }
     }
   });
 
-  it('rejects unknown model strings', () => {
-    expect(isValidModel('gpt-4')).toBe(false);
-    expect(isValidModel('')).toBe(false);
-    expect(isValidModel('claude-sonnet-4-6-FAKE')).toBe(false);
+  it('rejects unknown model for a valid provider', () => {
+    expect(isValidProviderModel('anthropic', 'gpt-4o')).toBe(false);
+    expect(isValidProviderModel('openai', 'claude-sonnet-4-6')).toBe(false);
   });
 
-  it('rejects non-string-like values coerced to string', () => {
-    expect(isValidModel('undefined')).toBe(false);
-    expect(isValidModel('null')).toBe(false);
+  it('rejects unknown provider', () => {
+    expect(isValidProviderModel('nonexistent', 'anything')).toBe(false);
   });
 });
 
@@ -36,16 +36,30 @@ describe('isValidFormat', () => {
   });
 });
 
-describe('MODELS array integrity', () => {
-  it('has unique IDs', () => {
-    const ids = MODELS.map((m) => m.id);
+describe('PROVIDERS array integrity', () => {
+  it('has unique provider IDs', () => {
+    const ids = PROVIDERS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('all models have valid apiString', () => {
-    for (const m of MODELS) {
-      expect(m.apiString).toBeTruthy();
-      expect(typeof m.apiString).toBe('string');
+  it('each provider has at least one model', () => {
+    for (const p of PROVIDERS) {
+      expect(p.models.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('all models within a provider have unique IDs', () => {
+    for (const p of PROVIDERS) {
+      const ids = p.models.map((m) => m.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('all models have valid maxOutputTokens', () => {
+    for (const p of PROVIDERS) {
+      for (const m of p.models) {
+        expect(m.maxOutputTokens).toBeGreaterThan(0);
+      }
     }
   });
 });

@@ -52,7 +52,7 @@ export function InputPanel() {
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Describe what you want Claude to do..."
+          placeholder="Describe what you want the AI to do..."
           className="min-h-[150px] resize-none pr-4 pb-8 text-base leading-relaxed"
           disabled={isGenerating}
         />

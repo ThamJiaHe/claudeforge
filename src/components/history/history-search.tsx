@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { MODELS, FORMATS } from '@/lib/constants';
+import { PROVIDERS, FORMATS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface HistorySearchProps {
@@ -53,11 +53,13 @@ export function HistorySearch({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Models</SelectItem>
-            {MODELS.map((model) => (
-              <SelectItem key={model.id} value={model.id}>
-                {model.displayName}
-              </SelectItem>
-            ))}
+            {PROVIDERS.flatMap((p) =>
+              p.models.map((model) => (
+                <SelectItem key={model.id} value={model.id}>
+                  {model.displayName}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
 

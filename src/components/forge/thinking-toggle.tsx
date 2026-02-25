@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { useForgeStore } from '@/store/use-forge-store';
-import { MODELS } from '@/lib/constants';
+import { getProvider } from '@/lib/providers';
 import { Switch } from '@/components/ui/switch';
 import {
   Tooltip,
@@ -12,16 +12,15 @@ import {
 } from '@/components/ui/tooltip';
 
 export function ThinkingToggle() {
-  const model = useForgeStore((s) => s.model);
+  const provider = useForgeStore((s) => s.provider);
   const enableThinking = useForgeStore((s) => s.enableThinking);
   const setEnableThinking = useForgeStore((s) => s.setEnableThinking);
 
-  const modelInfo = useMemo(
-    () => MODELS.find((m) => m.id === model),
-    [model]
-  );
-
-  const supportsThinking = modelInfo?.supportsThinking ?? false;
+  // Extended thinking is supported by all Anthropic Claude models
+  const supportsThinking = useMemo(() => {
+    const prov = getProvider(provider);
+    return prov?.sdkType === 'anthropic';
+  }, [provider]);
 
   // Auto-disable thinking when switching to a model that doesn't support it
   useEffect(() => {

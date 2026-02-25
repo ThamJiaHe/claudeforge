@@ -24,18 +24,23 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: `${APP_NAME} — Craft perfect Claude prompts`,
+    default: `${APP_NAME} — Craft perfect AI prompts`,
     template: `%s — ${APP_NAME}`,
   },
   description: APP_DESCRIPTION,
   keywords: [
     'Claude',
+    'GPT',
+    'Gemini',
+    'Llama',
     'prompt engineering',
     'AI prompts',
     'Anthropic',
+    'OpenAI',
     'prompt generator',
-    'Claude Code',
     'LLM',
+    'Ollama',
+    'LM Studio',
   ],
   authors: [{ name: 'ClaudeForge' }],
   creator: 'ClaudeForge',
@@ -45,12 +50,12 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://claudeforge.vercel.app',
     siteName: APP_NAME,
-    title: `${APP_NAME} — Craft perfect Claude prompts`,
+    title: `${APP_NAME} — Craft perfect AI prompts`,
     description: APP_DESCRIPTION,
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${APP_NAME} — Craft perfect Claude prompts`,
+    title: `${APP_NAME} — Craft perfect AI prompts`,
     description: APP_DESCRIPTION,
   },
   robots: {

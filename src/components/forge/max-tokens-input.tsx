@@ -2,20 +2,20 @@
 
 import { useMemo } from 'react';
 import { useForgeStore } from '@/store/use-forge-store';
-import { MODELS } from '@/lib/constants';
+import { getProvider } from '@/lib/providers';
 import { Slider } from '@/components/ui/slider';
 
 export function MaxTokensInput() {
+  const provider = useForgeStore((s) => s.provider);
   const model = useForgeStore((s) => s.model);
   const maxTokens = useForgeStore((s) => s.maxTokens);
   const setMaxTokens = useForgeStore((s) => s.setMaxTokens);
 
-  const modelInfo = useMemo(
-    () => MODELS.find((m) => m.id === model),
-    [model]
-  );
-
-  const maxOutputTokens = modelInfo?.maxOutputTokens ?? 8_192;
+  const maxOutputTokens = useMemo(() => {
+    const prov = getProvider(provider);
+    const modelDef = prov?.models.find((m) => m.id === model);
+    return modelDef?.maxOutputTokens ?? 8_192;
+  }, [provider, model]);
 
   // Clamp current value within the valid range for this model
   const clampedValue = Math.min(Math.max(maxTokens, 256), maxOutputTokens);

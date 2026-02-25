@@ -2,10 +2,11 @@ import type { GenerationParams } from '@/lib/types';
 import { SKILL_REGISTRY } from '@/data/skill-registry';
 import { getModelContext } from './model-context';
 import { getFormatInstructions } from './format-instructions';
+import { getTarget } from '@/lib/providers';
 
 /**
  * Builds a compact summary of the skill registry grouped by category.
- * This is embedded in the system prompt so Claude can suggest relevant skills.
+ * This is embedded in the system prompt so the model can suggest relevant skills.
  */
 function buildSkillSummary(): string {
   const byCategory = new Map<string, string[]>();
@@ -28,19 +29,25 @@ function buildSkillSummary(): string {
 }
 
 /**
- * Constructs the complete meta-prompt sent to the Claude API.
+ * Constructs the complete meta-prompt sent to the AI provider API.
+ *
+ * The prompt is now target-aware: it adapts its instructions based on which
+ * model family (Claude, GPT, Gemini, Llama, Universal) the generated prompt
+ * is being optimized for.
  *
  * Returns:
- * - system: The system prompt that instructs Claude to act as an expert prompt engineer
+ * - system: The system prompt that instructs the model to act as an expert prompt engineer
  * - userPrefix: A brief instruction prepended to the user's input text
  */
 export function buildMetaPrompt(params: GenerationParams): {
   system: string;
   userPrefix: string;
 } {
-  const modelContext = getModelContext(params.model);
+  const modelContext = getModelContext(params.target, params.model);
   const formatInstructions = getFormatInstructions(params.format);
   const skillSummary = buildSkillSummary();
+  const targetInfo = getTarget(params.target);
+  const targetName = targetInfo?.displayName ?? params.target;
 
   const thinkingNote = params.enableThinking
     ? [
@@ -57,13 +64,13 @@ export function buildMetaPrompt(params: GenerationParams): {
         'Do not include thinking-related directives in the generated prompt.',
       ].join('\n');
 
-  const system = `You are ClaudeForge, an expert prompt engineer specializing in crafting production-ready prompts for Anthropic's Claude models. Your task is to transform a user's plain English description into a polished, effective prompt in the specified format.
+  const system = `You are ClaudeForge, an expert prompt engineer specializing in crafting production-ready prompts for AI models. Your task is to transform a user's plain English description into a polished, effective prompt in the specified format, optimized for ${targetName} models.
 
 You have deep expertise in:
-- Anthropic's prompt engineering best practices
+- Prompt engineering best practices across all major AI model families
 - Structured prompt design (XML tags, TOON blocks, Markdown, JSON, YAML, etc.)
 - Chain-of-thought and extended thinking techniques
-- Claude's capabilities, limitations, and behavioral patterns
+- Model-specific capabilities, limitations, and behavioral patterns
 - Claude Code skills and plugins
 
 ---
@@ -91,10 +98,11 @@ YOUR INSTRUCTIONS:
 1. Read the user's plain English description carefully.
 2. Identify the core task, role, constraints, output format, and any implicit requirements.
 3. Transform the description into a production-ready prompt using the specified output format above.
-4. Make the prompt specific, actionable, and unambiguous.
-5. Add structure that the user may not have explicitly requested but that improves prompt quality (e.g., examples, edge case handling, output format specifications).
-6. From the skill registry above, suggest any Claude Code skills that would complement this prompt. Only suggest skills with genuine relevance (score >= 0.5).
-7. Provide practical parameter tips (e.g., recommended temperature, max tokens, whether to enable thinking).
+4. Optimize the prompt for ${targetName} models specifically — use patterns and structures that work best with ${targetName}.
+5. Make the prompt specific, actionable, and unambiguous.
+6. Add structure that the user may not have explicitly requested but that improves prompt quality (e.g., examples, edge case handling, output format specifications).
+7. From the skill registry above, suggest any Claude Code skills that would complement this prompt. Only suggest skills with genuine relevance (score >= 0.5).
+8. Provide practical parameter tips (e.g., recommended temperature, max tokens, whether to enable thinking).
 
 RESPONSE FORMAT:
 

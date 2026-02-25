@@ -45,8 +45,11 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
       }
     }
 
-    setIsLoading(true);
-    highlight();
+    const run = () => {
+      setIsLoading(true);
+      highlight();
+    };
+    run();
 
     return () => {
       cancelled = true;

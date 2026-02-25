@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { MODELS, FORMATS } from '@/lib/constants';
+import { PROVIDERS, FORMATS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import type { PromptHistoryEntry } from '@/lib/types';
 
@@ -59,7 +59,11 @@ function getRelativeTime(dateString: string): string {
 }
 
 function getModelDisplayName(modelId: string): string {
-  return MODELS.find((m) => m.id === modelId)?.displayName ?? modelId;
+  for (const provider of PROVIDERS) {
+    const model = provider.models.find((m) => m.id === modelId);
+    if (model) return model.displayName;
+  }
+  return modelId;
 }
 
 function getFormatDisplayName(formatId: string): string {

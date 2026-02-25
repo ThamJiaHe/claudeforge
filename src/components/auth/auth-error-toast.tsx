@@ -24,7 +24,19 @@ export function AuthErrorToast() {
       auth_no_code: 'Sign-in callback received no authorization code.',
     };
 
-    const message = messages[error] ?? description ?? `Auth error: ${error}`;
+    let message = messages[error];
+
+    if (!message) {
+      // Handle the common "Error getting user profile from external provider" error
+      const desc = description ?? error;
+      if (/external provider/i.test(desc) || /provider/i.test(desc)) {
+        message =
+          'Could not fetch your profile from the sign-in provider. This is usually a temporary issue — please try again in a moment.';
+      } else {
+        message = desc ? `Auth error: ${desc}` : `Auth error: ${error}`;
+      }
+    }
+
     toast.error(message);
 
     // Clean the error params from the URL (without triggering navigation)

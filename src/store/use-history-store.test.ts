@@ -11,6 +11,8 @@ function makeEntry(overrides: Partial<PromptHistoryEntry> = {}): PromptHistoryEn
     model: 'claude-sonnet-4-6',
     format: 'xml',
     parameters: {
+      provider: 'anthropic',
+      target: 'claude',
       model: 'claude-sonnet-4-6',
       format: 'xml',
       enableThinking: false,

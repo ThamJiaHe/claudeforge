@@ -22,21 +22,36 @@ export async function GET(request: Request) {
   }
 
   if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      console.log('[auth/callback] Session established, redirecting to:', safeNext);
-      return NextResponse.redirect(`${origin}${safeNext}`);
+    try {
+      const supabase = await createClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (!error) {
+        console.log('[auth/callback] Session established, redirecting to:', safeNext);
+        return NextResponse.redirect(`${origin}${safeNext}`);
+      }
+
+      // Log the exchange error so it appears in Vercel logs
+      console.error('[auth/callback] Code exchange failed:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+      });
+
+      // "Error getting user profile from external provider" — transient provider issue
+      const isProviderError = /external provider/i.test(error.message);
+      const errorKey = isProviderError ? 'provider_error' : 'auth_exchange_failed';
+
+      return NextResponse.redirect(
+        `${origin}/?error=${errorKey}&error_description=${encodeURIComponent(error.message)}`
+      );
+    } catch (err) {
+      // Network / unexpected errors during code exchange
+      const msg = err instanceof Error ? err.message : 'Unexpected error during sign-in';
+      console.error('[auth/callback] Unexpected error:', msg);
+      return NextResponse.redirect(
+        `${origin}/?error=auth_exchange_failed&error_description=${encodeURIComponent(msg)}`
+      );
     }
-    // Log the exchange error so it appears in Vercel logs
-    console.error('[auth/callback] Code exchange failed:', {
-      message: error.message,
-      status: error.status,
-      name: error.name,
-    });
-    return NextResponse.redirect(
-      `${origin}/?error=auth_exchange_failed&error_description=${encodeURIComponent(error.message)}`
-    );
   }
 
   // No code and no error — unexpected state

@@ -2,6 +2,7 @@
 
 import { useForgeStore } from '@/store/use-forge-store';
 import { useHistoryStore } from '@/store/use-history-store';
+import { getProvider } from '@/lib/providers';
 import type { GenerationResult, PromptHistoryEntry } from '@/lib/types';
 import { toast } from 'sonner';
 
@@ -10,8 +11,10 @@ export function useGenerate() {
   const addEntry = useHistoryStore((s) => s.addEntry);
 
   const generate = async () => {
-    if (!store.apiKey) {
-      toast.error('Please enter your Anthropic API key');
+    // Provider-aware API key validation
+    const provider = getProvider(store.provider);
+    if (provider?.requiresApiKey && !store.apiKey) {
+      toast.error(`Please enter your ${provider.name} API key`);
       return;
     }
     if (!store.inputText.trim()) {
@@ -30,11 +33,15 @@ export function useGenerate() {
         body: JSON.stringify({
           text: store.inputText,
           params: {
+            provider: store.provider,
             model: store.model,
+            target: store.target,
             format: store.format,
             enableThinking: store.enableThinking,
             effort: store.effort,
             maxTokens: store.maxTokens,
+            customBaseUrl: store.customBaseUrl || undefined,
+            customModelName: store.customModelName || undefined,
           },
           apiKey: store.apiKey,
         }),
@@ -79,7 +86,7 @@ export function useGenerate() {
             if (data.error) throw new Error(String(data.error));
             if (data.text) accumulated += String(data.text);
             if (data.done) {
-                // The meta-prompt instructs Claude to return JSON with
+                // The meta-prompt instructs the model to return JSON with
                 // { prompt, structuredData, suggestedSkills, parameterTips }
                 let parsedPrompt = accumulated;
                 let structuredData: Record<string, string> = {};
@@ -87,7 +94,7 @@ export function useGenerate() {
                 let parameterTips: string[] = [];
 
                 try {
-                  // Strip markdown code fences if Claude wrapped them
+                  // Strip markdown code fences if the model wrapped them
                   const cleaned = accumulated
                     .trim()
                     .replace(/^```(?:json)?\s*\n?/i, '')
@@ -128,11 +135,15 @@ export function useGenerate() {
                   model: store.model,
                   format: store.format,
                   parameters: {
+                    provider: store.provider,
                     model: store.model,
+                    target: store.target,
                     format: store.format,
                     enableThinking: store.enableThinking,
                     effort: store.effort,
                     maxTokens: store.maxTokens,
+                    customBaseUrl: store.customBaseUrl || undefined,
+                    customModelName: store.customModelName || undefined,
                   },
                   suggestedSkills: [],
                   isFavorite: false,

@@ -5,20 +5,42 @@ import { Eye, EyeOff, Pencil, KeyRound, AlertTriangle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useForgeStore } from '@/store/use-forge-store';
+import { getProvider } from '@/lib/providers';
 
-/** Validates that the key looks like an Anthropic API key */
-function isValidApiKeyFormat(key: string): boolean {
-  return /^sk-ant-[a-zA-Z0-9_-]{10,}$/.test(key);
+/** Validates that the key roughly matches the provider's expected pattern */
+function isValidApiKeyFormat(key: string, providerPrefix?: string): boolean {
+  if (!providerPrefix) return true; // No prefix = no validation
+  try {
+    return new RegExp(providerPrefix).test(key);
+  } catch {
+    return true; // If the regex is invalid, skip validation
+  }
 }
 
 export function ApiKeyInput() {
   const apiKey = useForgeStore((s) => s.apiKey);
   const setApiKey = useForgeStore((s) => s.setApiKey);
+  const providerId = useForgeStore((s) => s.provider);
   const [showKey, setShowKey] = useState(false);
   const [isEditing, setIsEditing] = useState(!apiKey);
 
+  const provider = getProvider(providerId);
+  const requiresKey = provider?.requiresApiKey ?? true;
+  const placeholder = provider?.apiKeyPlaceholder ?? 'API key...';
+  const prefix = provider?.apiKeyPrefix;
+
+  // For providers that don't require a key, hide this component
+  if (!requiresKey) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        No API key needed for {provider?.name ?? 'this provider'}.
+        {provider?.allowCustomBaseUrl && ' Make sure your local server is running.'}
+      </p>
+    );
+  }
+
   const hasKey = apiKey.length > 0;
-  const formatWarning = hasKey && !isValidApiKeyFormat(apiKey);
+  const formatWarning = hasKey && prefix ? !isValidApiKeyFormat(apiKey, prefix) : false;
 
   // When the key is set and user is not editing, show collapsed view
   if (apiKey && !isEditing) {
@@ -42,7 +64,7 @@ export function ApiKeyInput() {
         {formatWarning && (
           <p className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-500">
             <AlertTriangle className="size-3" />
-            Key format doesn&apos;t match expected pattern (sk-ant-...)
+            Key format doesn&apos;t match expected pattern ({placeholder})
           </p>
         )}
       </div>
@@ -55,7 +77,7 @@ export function ApiKeyInput() {
         <div className="relative flex-1">
           <Input
             type={showKey ? 'text' : 'password'}
-            placeholder="sk-ant-..."
+            placeholder={placeholder}
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             onBlur={() => {
@@ -94,12 +116,12 @@ export function ApiKeyInput() {
       {formatWarning && (
         <p className="flex items-center gap-1 text-xs text-yellow-600 dark:text-yellow-500">
           <AlertTriangle className="size-3" />
-          Key format doesn&apos;t match expected pattern (sk-ant-...)
+          Key format doesn&apos;t match expected pattern ({placeholder})
         </p>
       )}
       <p className="text-xs text-muted-foreground">
         Stored in this browser tab only (sessionStorage). Your key is sent to our
-        server solely to proxy the Anthropic API&nbsp;&mdash; never stored server-side.
+        server solely to proxy the {provider?.name ?? 'AI'} API&nbsp;&mdash; never stored server-side.
       </p>
     </form>
   );
