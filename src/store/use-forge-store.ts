@@ -10,44 +10,66 @@ import {
   DEFAULT_MAX_TOKENS,
 } from '@/lib/constants';
 
-// ─── Session-scoped API key storage ──────────────────────
-const SESSION_KEY = 'cf-ak';
+// ─── Per-provider session-scoped API key storage ────────
+// Each provider gets its own sessionStorage key: cf-ak-{providerId}
+// Keys are cleared when the browser tab closes (session scope).
+const SESSION_KEY_PREFIX = 'cf-ak-';
 
-/**
- * Load API key from sessionStorage, migrating from localStorage
- * if the user stored a key there before this security fix.
- */
-function loadApiKey(): string {
+/** Read the API key for a specific provider from sessionStorage */
+function loadApiKeyForProvider(providerId: string): string {
   if (typeof window === 'undefined') return '';
   try {
-    const sessionVal = sessionStorage.getItem(SESSION_KEY);
-    if (sessionVal) return sessionVal;
+    return sessionStorage.getItem(`${SESSION_KEY_PREFIX}${providerId}`) ?? '';
+  } catch {
+    return '';
+  }
+}
 
-    // One-time migration: move key from old localStorage persist store
+/** Save the API key for a specific provider to sessionStorage */
+function saveApiKeyForProvider(providerId: string, key: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (key) sessionStorage.setItem(`${SESSION_KEY_PREFIX}${providerId}`, key);
+    else sessionStorage.removeItem(`${SESSION_KEY_PREFIX}${providerId}`);
+  } catch {
+    // sessionStorage may be unavailable
+  }
+}
+
+/**
+ * One-time migration: move old single API key from the legacy
+ * `cf-ak` sessionStorage entry (or localStorage persist store)
+ * to the new per-provider format under the Anthropic provider,
+ * since the old app only supported Anthropic.
+ */
+function migrateOldApiKey(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    // Check if migration was already done
+    if (sessionStorage.getItem('cf-ak-migrated')) return;
+
+    // Migrate from old single sessionStorage key
+    const oldSessionKey = sessionStorage.getItem('cf-ak');
+    if (oldSessionKey) {
+      saveApiKeyForProvider('anthropic', oldSessionKey);
+      sessionStorage.removeItem('cf-ak');
+    }
+
+    // Migrate from old localStorage persist store
     const stored = localStorage.getItem('claudeforge-config');
     if (stored) {
       const parsed = JSON.parse(stored);
       const oldKey = parsed?.state?.apiKey;
       if (oldKey && typeof oldKey === 'string') {
-        sessionStorage.setItem(SESSION_KEY, oldKey);
+        saveApiKeyForProvider('anthropic', oldKey);
         delete parsed.state.apiKey;
         localStorage.setItem('claudeforge-config', JSON.stringify(parsed));
-        return oldKey;
       }
     }
-  } catch {
-    // Ignore storage errors
-  }
-  return '';
-}
 
-function saveApiKey(key: string): void {
-  if (typeof window === 'undefined') return;
-  try {
-    if (key) sessionStorage.setItem(SESSION_KEY, key);
-    else sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.setItem('cf-ak-migrated', '1');
   } catch {
-    // sessionStorage may be unavailable
+    // Ignore migration errors
   }
 }
 
@@ -100,25 +122,39 @@ interface ForgeState {
 
 export const useForgeStore = create<ForgeState>()(
   persist(
-    (set) => ({
-      // API Key — synced to sessionStorage (cleared on tab close), NOT localStorage
+    (set, get) => ({
+      // API Key — synced to sessionStorage PER PROVIDER (cleared on tab close)
       apiKey: '',
       setApiKey: (key) => {
-        saveApiKey(key);
+        // Save to the current provider's slot in sessionStorage
+        saveApiKeyForProvider(get().provider, key);
         set({ apiKey: key });
       },
       clearApiKey: () => {
-        saveApiKey('');
+        saveApiKeyForProvider(get().provider, '');
         set({ apiKey: '' });
       },
-      hydrateApiKey: () => set({ apiKey: loadApiKey() }),
+      hydrateApiKey: () => {
+        // Run one-time migration from old single-key format
+        migrateOldApiKey();
+        // Load key for the current provider
+        const key = loadApiKeyForProvider(get().provider);
+        set({ apiKey: key });
+      },
 
       // Provider + Target
       provider: DEFAULT_PROVIDER,
       target: DEFAULT_TARGET,
       customBaseUrl: '',
       customModelName: '',
-      setProvider: (provider) => set({ provider }),
+      setProvider: (provider) => {
+        const currentState = get();
+        // Save current provider's API key before switching
+        saveApiKeyForProvider(currentState.provider, currentState.apiKey);
+        // Load the new provider's API key
+        const newKey = loadApiKeyForProvider(provider);
+        set({ provider, apiKey: newKey });
+      },
       setTarget: (target) => set({ target }),
       setCustomBaseUrl: (customBaseUrl) => set({ customBaseUrl }),
       setCustomModelName: (customModelName) => set({ customModelName }),
