@@ -12,7 +12,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       // Alias missing CSS import from react-kofi to an empty module
-      'react-kofi/dist/button.css': path.resolve(__dirname, './src/test/empty-module.ts'),
+      'react-kofi/dist/kofi.css': path.resolve(__dirname, './src/test/empty-module.ts'),
+      'react-kofi/dist/styles.css': path.resolve(__dirname, './src/test/empty-module.ts'),
     },
   },
 });

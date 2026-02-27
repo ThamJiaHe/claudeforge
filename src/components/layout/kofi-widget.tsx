@@ -1,13 +1,12 @@
 'use client';
 
-import { FloatingWidget } from 'react-kofi';
-import 'react-kofi/dist/widget.css';
+import { KoFiWidget as Widget } from 'react-kofi';
+import 'react-kofi/dist/styles.css';
 
 export function KofiWidget() {
   return (
-    <FloatingWidget
+    <Widget
       username="thamjiahe"
-      attachOnScroll={true}
     />
   );
 }

@@ -1,11 +1,11 @@
 'use client';
 
-import { KofiButton as KofiBtn } from 'react-kofi';
-import 'react-kofi/dist/button.css';
+import { KoFiButton as KoFiBtn } from 'react-kofi';
+import 'react-kofi/dist/kofi.css';
 
 export function KofiButton() {
   return (
-    <KofiBtn
+    <KoFiBtn
       username="thamjiahe"
       label="Support"
       preset="thin"

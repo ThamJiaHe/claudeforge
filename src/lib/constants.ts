@@ -33,4 +33,4 @@ export function isValidFormat(value: string): value is import('./types').PromptF
 // ─── App metadata ────────────────────────────────────────
 export const APP_NAME = 'ClaudeForge';
 export const APP_DESCRIPTION = 'Craft perfect AI prompts from plain English';
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.3.0';

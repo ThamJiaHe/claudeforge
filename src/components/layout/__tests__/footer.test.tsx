@@ -10,9 +10,9 @@ vi.mock('next/link', () => ({
 
 // Mock react-kofi and its CSS to prevent resolution errors
 vi.mock('react-kofi', () => ({
-  KofiButton: () => null,
+  KoFiButton: () => null,
 }));
-vi.mock('react-kofi/dist/button.css', () => ({}));
+vi.mock('react-kofi/dist/kofi.css', () => ({}));
 
 // Mock KofiButton (uses 'use client' and react-kofi)
 vi.mock('../kofi-button', () => ({
