@@ -8,6 +8,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthErrorToast } from '@/components/auth/auth-error-toast';
+import { KofiWidget } from '@/components/layout/kofi-widget';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
@@ -95,6 +96,7 @@ export default function RootLayout({
             <AuthErrorToast />
           </Suspense>
           <Toaster />
+          <KofiWidget />
           <SpeedInsights />
           <Analytics />
         </ThemeProvider>
