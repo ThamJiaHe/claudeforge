@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SecurityPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
+    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       {/* Header */}
       <div className="mb-10 flex items-center gap-3">
         <Shield className="size-8 text-muted-foreground" />
