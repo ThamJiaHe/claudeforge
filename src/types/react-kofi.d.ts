@@ -2,14 +2,18 @@ declare module 'react-kofi' {
   import { ComponentType } from 'react';
 
   interface KoFiButtonProps {
-    username: string;
+    id: string;
     label?: string;
-    preset?: string;
-    backgroundColor?: string;
+    color?: string;
+    size?: string;
+    radius?: string;
   }
 
   interface KoFiWidgetProps {
-    username: string;
+    id: string;
+    label?: string;
+    color?: string;
+    textColor?: string;
     attachOnScroll?: boolean;
   }
 

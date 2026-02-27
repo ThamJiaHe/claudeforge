@@ -6,10 +6,10 @@ import 'react-kofi/dist/kofi.css';
 export function KofiButton() {
   return (
     <KoFiBtn
-      username="thamjiahe"
+      id="thamjiahe"
       label="Support"
-      preset="thin"
-      backgroundColor="kofiGrey"
+      color="#434b57"
+      radius="8px"
     />
   );
 }

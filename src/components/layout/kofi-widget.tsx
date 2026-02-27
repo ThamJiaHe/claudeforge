@@ -6,7 +6,10 @@ import 'react-kofi/dist/styles.css';
 export function KofiWidget() {
   return (
     <Widget
-      username="thamjiahe"
+      id="thamjiahe"
+      label="Support"
+      color="#434b57"
+      textColor="#fff"
     />
   );
 }
