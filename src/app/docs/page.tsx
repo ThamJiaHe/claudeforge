@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { BackToTopButton } from './back-to-top-button';
 import {
   BookOpen,
   Key,
@@ -491,12 +491,7 @@ export default function DocsPage() {
 
       {/* Back to top */}
       <div className="mt-16 border-t pt-6 text-center">
-        <Link
-          href="/docs"
-          className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Back to top
-        </Link>
+        <BackToTopButton />
       </div>
     </div>
   );
