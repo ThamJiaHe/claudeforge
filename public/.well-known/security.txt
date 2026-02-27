@@ -1,0 +1,5 @@
+Contact: https://github.com/ThamJiaHe/claudeforge/security/advisories/new
+Expires: 2027-02-27T00:00:00.000Z
+Preferred-Languages: en
+Canonical: https://claudeforge.vercel.app/.well-known/security.txt
+Policy: https://claudeforge.vercel.app/security
