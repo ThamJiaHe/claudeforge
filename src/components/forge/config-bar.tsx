@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 export function ConfigBar() {
   return (
     <motion.div
-      className="grid grid-cols-2 items-end gap-3 rounded-lg bg-muted/50 p-3 sm:gap-4 sm:p-4 md:grid-cols-3 lg:flex lg:flex-wrap"
+      className="grid grid-cols-2 items-end gap-4 rounded-lg bg-muted/50 p-4 sm:gap-4 sm:p-4 md:grid-cols-3 lg:flex lg:flex-wrap"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
