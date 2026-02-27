@@ -12,6 +12,7 @@ const footerLinks = {
   ],
   community: [
     { label: 'GitHub', href: 'https://github.com/ThamJiaHe/claudeforge', external: true },
+    { label: 'Ko-Fi', href: 'https://ko-fi.com/thamjiahe', external: true },
     { label: 'Issues', href: 'https://github.com/ThamJiaHe/claudeforge/issues', external: true },
     { label: 'Contribute', href: 'https://github.com/ThamJiaHe/claudeforge/blob/main/README.md', external: true },
   ],

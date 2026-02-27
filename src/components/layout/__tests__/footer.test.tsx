@@ -44,8 +44,14 @@ describe('Footer', () => {
     expect(screen.getByText(/v\d+\.\d+\.\d+/)).toBeInTheDocument();
   });
 
-  it('shows branding text', () => {
+  it('renders Ko-Fi button', () => {
     render(<Footer />);
-    expect(screen.getByText(/built with/i)).toBeInTheDocument();
+    expect(screen.getByTestId('kofi-button')).toBeInTheDocument();
+  });
+
+  it('renders GitHub link', () => {
+    render(<Footer />);
+    const link = screen.getByRole('link', { name: /github repository/i });
+    expect(link).toHaveAttribute('href', 'https://github.com/ThamJiaHe/claudeforge');
   });
 });
